@@ -2588,12 +2588,20 @@ int kvm_cpu_exec(CPUState *cpu)
 
 #ifdef QEMU_NYX
             // clang-format on
-            if (run->io.port == 0x5658 && run->io.size == 4 &&
-                *((uint32_t *)((uint8_t *)run + run->io.data_offset)) == 0x8080801f)
+            if (unlikely(run->io.port == 0x5658 && run->io.size == 4 &&
+                *((uint32_t *)((uint8_t *)run + run->io.data_offset)) == 0x8080801f))
             {
                 assert(kvm_state->nyx_no_pt_mode);
                 ret = handle_vmware_hypercall(run, cpu);
                 break;
+            }
+
+            // Skip handling of SMI trigger (port 0x00B2) during fuzzing mode.
+            // This prevents unintended side effects caused by entering SMM and 
+            // avoids excessive memory modifications that can pollute the dirty ring.
+            if (likely(GET_GLOBAL_STATE()->in_fuzzing_mode) && unlikely(run->io.port == 0x00B2)) {
+                ret = 0;
+                break;  // Intentionally bypass I/O handler
             }
 // clang-format off
 #endif
