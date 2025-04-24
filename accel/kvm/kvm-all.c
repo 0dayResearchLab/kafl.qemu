@@ -2596,13 +2596,22 @@ int kvm_cpu_exec(CPUState *cpu)
                 break;
             }
 
-            // Skip handling of SMI trigger (port 0x00B2) during fuzzing mode.
-            // This prevents unintended side effects caused by entering SMM and 
-            // avoids excessive memory modifications that can pollute the dirty ring.
-            if (likely(GET_GLOBAL_STATE()->in_fuzzing_mode) && unlikely(run->io.port == 0x00B2)) {
-                ret = 0;
-                break;  // Intentionally bypass I/O handler
+            if (likely(GET_GLOBAL_STATE()->in_fuzzing_mode)) {
+                // Skip handling of SMI trigger (port 0x00B2 and 0x00B3) during fuzzing mode.
+                // This prevents unintended side effects caused by entering SMM and
+                // avoids excessive memory modifications that can pollute the dirty ring.
+                if(run->io.port == 0x00B2 || run->io.port == 0x00B3){
+                    ret = 0;
+                }
+                // Skip handling of PCI configuration space access (ports 0xCF8 and 0xCFC) during fuzzing mode.
+                // This prevents unintended side effects from PCI configuration changes and
+                // avoids excessive memory modifications that can pollute the dirty ring.
+                if(run->io.port == 0xCF8 || run->io.port == 0xCFC){
+                    ret = 0;
+                }
+                break;
             }
+
 // clang-format off
 #endif
 
